@@ -28,7 +28,7 @@
   var iframe = document.createElement('iframe');
   iframe.src = baseUrl + '/embed/flow?site=' + encodeURIComponent(siteCode);
   iframe.style.width = '100%';
-  iframe.style.height = '480px';
+  iframe.style.height = '1100px';
   iframe.style.border = 'none';
   iframe.style.borderRadius = '8px';
   iframe.style.overflow = 'hidden';

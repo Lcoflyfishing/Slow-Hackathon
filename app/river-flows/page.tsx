@@ -6,6 +6,7 @@ import {
   getRiverFlowData,
   type RiverStation,
   type RiverFlowResult,
+  type FlowPeriod,
 } from "@/lib/actions/river-flows"
 import {
   LineChart,
@@ -19,6 +20,8 @@ import {
 import { TrendingUp, TrendingDown, Minus, Search, Droplets } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import StationMap from "@/components/station-map"
+import WeatherForecast from "@/components/weather-forecast"
 import Link from "next/link"
 
 export default function RiverFlowsPage() {
@@ -26,6 +29,7 @@ export default function RiverFlowsPage() {
   const [stations, setStations] = useState<RiverStation[]>([])
   const [flowData, setFlowData] = useState<RiverFlowResult | null>(null)
   const [error, setError] = useState("")
+  const [period, setPeriod] = useState<FlowPeriod>("7")
   const [searching, startSearch] = useTransition()
   const [loading, startLoad] = useTransition()
 
@@ -33,6 +37,7 @@ export default function RiverFlowsPage() {
     e.preventDefault()
     setFlowData(null)
     setError("")
+    setPeriod("7")
     startSearch(async () => {
       const result = await searchRiverStations(query)
       if (result.error) {
@@ -47,7 +52,20 @@ export default function RiverFlowsPage() {
   function handleSelectStation(station: RiverStation) {
     setError("")
     startLoad(async () => {
-      const result = await getRiverFlowData(station.siteCode)
+      const result = await getRiverFlowData(station.siteCode, period)
+      if (result.error) {
+        setError(result.error)
+      } else if (result.data) {
+        setFlowData(result.data)
+      }
+    })
+  }
+
+  function handlePeriodChange(newPeriod: FlowPeriod) {
+    if (!flowData || newPeriod === period) return
+    setPeriod(newPeriod)
+    startLoad(async () => {
+      const result = await getRiverFlowData(flowData.siteCode, newPeriod)
       if (result.error) {
         setError(result.error)
       } else if (result.data) {
@@ -250,21 +268,43 @@ export default function RiverFlowsPage() {
               className="rounded-lg border bg-white p-6"
               style={{ borderColor: "rgba(31,58,60,0.08)" }}
             >
+              {/* Period Toggle */}
+              <div className="flex items-center gap-1 mb-4">
+                {(["1", "3", "7", "30"] as FlowPeriod[]).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => handlePeriodChange(d)}
+                    disabled={loading}
+                    className="px-3 py-1 rounded text-xs font-medium transition-colors"
+                    style={{
+                      backgroundColor: period === d ? "#1F3A3C" : "transparent",
+                      color: period === d ? "#FAF4F0" : "#1F3A3C",
+                      opacity: period === d ? 1 : 0.4,
+                    }}
+                  >
+                    {d}D
+                  </button>
+                ))}
+              </div>
+
               <div className="flex items-center justify-between mb-4">
                 <p
                   className="text-xs font-medium uppercase tracking-wide"
                   style={{ color: "#1F3A3C", opacity: 0.5 }}
                 >
-                  7-Day Flow
+                  {period}-Day Flow
                 </p>
 
-                {/* Trend Arrow */}
+                {/* Trend Arrow + Rate */}
                 <div className="flex items-center gap-1.5">
                   {flowData.trend === "up" && (
                     <>
                       <TrendingUp className="h-4 w-4" style={{ color: "#2D8B5E" }} />
                       <span className="text-xs font-medium" style={{ color: "#2D8B5E" }}>
                         Rising
+                      </span>
+                      <span className="text-xs font-light" style={{ color: "#2D8B5E" }}>
+                        +{Math.abs(flowData.rateOfChange)} cfs/hr
                       </span>
                     </>
                   )}
@@ -273,6 +313,9 @@ export default function RiverFlowsPage() {
                       <TrendingDown className="h-4 w-4" style={{ color: "#ED6438" }} />
                       <span className="text-xs font-medium" style={{ color: "#ED6438" }}>
                         Falling
+                      </span>
+                      <span className="text-xs font-light" style={{ color: "#ED6438" }}>
+                        -{Math.abs(flowData.rateOfChange)} cfs/hr
                       </span>
                     </>
                   )}
@@ -284,6 +327,9 @@ export default function RiverFlowsPage() {
                         style={{ color: "#1F3A3C", opacity: 0.4 }}
                       >
                         Stable
+                      </span>
+                      <span className="text-xs font-light" style={{ color: "#1F3A3C", opacity: 0.4 }}>
+                        {flowData.rateOfChange > 0 ? "+" : ""}{flowData.rateOfChange} cfs/hr
                       </span>
                     </>
                   )}
@@ -337,6 +383,35 @@ export default function RiverFlowsPage() {
                 </ResponsiveContainer>
               </div>
             </div>
+
+            {/* Weather Forecast */}
+            {flowData.weather && flowData.weather.forecast.length > 0 && (
+              <div className="mt-6">
+                <WeatherForecast
+                  forecast={flowData.weather.forecast}
+                  currentTemp={flowData.weather.temperature}
+                  currentDescription={flowData.weather.description}
+                  windSpeed={flowData.weather.windSpeed}
+                />
+              </div>
+            )}
+
+            {/* Map */}
+            {flowData.latitude && flowData.longitude && (
+              <div className="mt-6">
+                <p
+                  className="text-xs font-medium uppercase tracking-wide mb-3"
+                  style={{ color: "#1F3A3C", opacity: 0.5 }}
+                >
+                  Station Location
+                </p>
+                <StationMap
+                  latitude={flowData.latitude}
+                  longitude={flowData.longitude}
+                  siteName={flowData.siteName}
+                />
+              </div>
+            )}
 
             <p
               className="text-xs font-light mt-4 text-center"

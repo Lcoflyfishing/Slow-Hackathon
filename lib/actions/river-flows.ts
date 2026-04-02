@@ -77,10 +77,13 @@ export async function searchRiverStations(
 }
 
 import { fetchFlowData } from "@/lib/usgs"
-import type { RiverFlowResult } from "@/lib/usgs"
+import type { RiverFlowResult, FlowPeriod } from "@/lib/usgs"
+
+export type { FlowPeriod } from "@/lib/usgs"
 
 export async function getRiverFlowData(
-  siteCode: string
+  siteCode: string,
+  days: FlowPeriod = "7"
 ): Promise<{ data?: RiverFlowResult; error?: string }> {
-  return fetchFlowData(siteCode)
+  return fetchFlowData(siteCode, days)
 }

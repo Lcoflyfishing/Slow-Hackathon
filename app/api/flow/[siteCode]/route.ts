@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { fetchFlowData } from "@/lib/usgs"
+import { fetchFlowData, type FlowPeriod } from "@/lib/usgs"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +24,11 @@ export async function GET(
     )
   }
 
-  const result = await fetchFlowData(siteCode)
+  const validDays: FlowPeriod[] = ["1", "3", "7", "30"]
+  const daysParam = _request.nextUrl.searchParams.get("days") as FlowPeriod | null
+  const days: FlowPeriod = daysParam && validDays.includes(daysParam) ? daysParam : "7"
+
+  const result = await fetchFlowData(siteCode, days)
 
   if (result.error) {
     return NextResponse.json(

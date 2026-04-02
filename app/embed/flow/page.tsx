@@ -12,6 +12,8 @@ import {
   CartesianGrid,
 } from "recharts"
 import type { RiverFlowResult } from "@/lib/usgs"
+import StationMap from "@/components/station-map"
+import WeatherForecast from "@/components/weather-forecast"
 
 export default function EmbedFlowPage() {
   return (
@@ -27,6 +29,7 @@ function EmbedFlowContent() {
   const [flowData, setFlowData] = useState<RiverFlowResult | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState<"1" | "3" | "7" | "30">("7")
 
   useEffect(() => {
     if (!siteCode) {
@@ -36,8 +39,9 @@ function EmbedFlowContent() {
     }
 
     async function load() {
+      setLoading(true)
       try {
-        const res = await fetch(`/api/flow/${siteCode}`)
+        const res = await fetch(`/api/flow/${siteCode}?days=${period}`)
         if (!res.ok) {
           const body = await res.json()
           setError(body.error || "Failed to load flow data")
@@ -52,7 +56,7 @@ function EmbedFlowContent() {
     }
 
     load()
-  }, [siteCode])
+  }, [siteCode, period])
 
   const chartData = flowData?.timeSeries.map((pt) => ({
     time: new Date(pt.dateTime).toLocaleDateString("en-US", {
@@ -137,14 +141,40 @@ function EmbedFlowContent() {
 
           {/* Chart */}
           <div style={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid rgba(31,58,60,0.08)", padding: "24px" }}>
+            {/* Period Toggle */}
+            <div style={{ display: "flex", gap: "4px", marginBottom: "16px" }}>
+              {(["1", "3", "7", "30"] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setPeriod(d)}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer",
+                    backgroundColor: period === d ? "#1F3A3C" : "transparent",
+                    color: period === d ? "#FAF4F0" : "#1F3A3C",
+                    opacity: period === d ? 1 : 0.4,
+                  }}
+                >
+                  {d}D
+                </button>
+              ))}
+            </div>
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
               <p style={{ color: "#1F3A3C", opacity: 0.5, fontSize: "12px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
-                7-Day Flow
+                {period}-Day Flow
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <TrendIcon trend={flowData.trend} />
                 <span style={{ color: trendColor, fontSize: "12px", fontWeight: 500 }}>
                   {trendLabel}
+                </span>
+                <span style={{ color: trendColor, fontSize: "12px", fontWeight: 300 }}>
+                  {flowData.rateOfChange > 0 ? "+" : ""}{flowData.rateOfChange} cfs/hr
                 </span>
               </div>
             </div>
@@ -193,6 +223,32 @@ function EmbedFlowContent() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Weather Forecast */}
+          {flowData.weather && flowData.weather.forecast && flowData.weather.forecast.length > 0 && (
+            <div style={{ marginTop: "24px" }}>
+              <WeatherForecast
+                forecast={flowData.weather.forecast}
+                currentTemp={flowData.weather.temperature}
+                currentDescription={flowData.weather.description}
+                windSpeed={flowData.weather.windSpeed}
+              />
+            </div>
+          )}
+
+          {/* Map */}
+          {flowData.latitude && flowData.longitude && (
+            <div style={{ marginTop: "24px" }}>
+              <p style={{ color: "#1F3A3C", opacity: 0.5, fontSize: "12px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px" }}>
+                Station Location
+              </p>
+              <StationMap
+                latitude={flowData.latitude}
+                longitude={flowData.longitude}
+                siteName={flowData.siteName}
+              />
+            </div>
+          )}
 
           <p style={{ color: "#1F3A3C", opacity: 0.3, fontSize: "12px", fontWeight: 300, textAlign: "center", marginTop: "16px" }}>
             Data from USGS National Water Information System
