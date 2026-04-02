@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   LineChart,
@@ -14,6 +14,14 @@ import {
 import type { RiverFlowResult } from "@/lib/usgs"
 
 export default function EmbedFlowPage() {
+  return (
+    <Suspense fallback={<div style={{ fontFamily: "system-ui, sans-serif", backgroundColor: "#FAF4F0", padding: "24px", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#1F3A3C", opacity: 0.6, fontSize: "14px" }}>Loading...</span></div>}>
+      <EmbedFlowContent />
+    </Suspense>
+  )
+}
+
+function EmbedFlowContent() {
   const searchParams = useSearchParams()
   const siteCode = searchParams.get("site")
   const [flowData, setFlowData] = useState<RiverFlowResult | null>(null)
